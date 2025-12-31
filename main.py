@@ -1,10 +1,9 @@
 import pose_module as pd
 import cv2
 import time
-import utils
 ###############################
 imgWidth, imgHeight = 1280, 720
-videosPath = "videos"
+videosPath = "assets/videos"
 ###############################
 
 def main():
@@ -25,10 +24,11 @@ def main():
             leftArmAngle = detector.findAngle(img, 11 ,13, 15)
             state, reps, drawColor = detector.checkState(img, "left")
             if state:
-                cv2.putText(img, f'Phase: {state}', (20, 40), cv2.FONT_HERSHEY_PLAIN, 3, drawColor, 3)
-                cv2.putText(img, f'Reps: {reps}', (20, 90), cv2.FONT_HERSHEY_PLAIN, 3, drawColor, 3)
-            print(detector.barPath)
-            utils.drawBarPath(img, detector.barPath)
+                cv2.putText(img, f'Phase: {state}', (20, 90), cv2.FONT_HERSHEY_PLAIN, 3, drawColor, 3)
+                cv2.putText(img, f'Reps: {reps}', (20, 140), cv2.FONT_HERSHEY_PLAIN, 3, (0,0,255),  3)
+            detector.drawBarPath(img, detector.barPath)
+            velocity = detector.calculateVelocity(img, detector.barPath)
+            #print(velocity)
 
             #leftElbowangle = detector.findAngle(img, 13, 11, 33)
 
@@ -36,12 +36,12 @@ def main():
         cTime = time.time()
         fps = 1/(cTime - pTime)
         pTime = cTime
-        cv2.putText(img, f'FPS: {str(int(fps))}' ,(1150, 30), cv2.FONT_HERSHEY_PLAIN , 2, drawColor, 2)
+        cv2.putText(img, f'FPS: {str(int(fps))}' ,(1150, 30), cv2.FONT_HERSHEY_PLAIN , 2, (0,0,255), 2)
 
         cv2.imshow("Bench press tracker", img)
 
 
-        if cv2.waitKey(50) & 0xFF == ord('q'):
+        if cv2.waitKey(100) & 0xFF == ord('q'):
             break
 
     cap.release()

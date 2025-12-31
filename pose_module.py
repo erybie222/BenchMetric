@@ -1,7 +1,8 @@
 import mediapipe as mp
 import cv2
 import math
-
+import numpy as np
+import time
 States = {
     0: "START",
     1: "ECCENTRIC",
@@ -92,7 +93,7 @@ class PoseDetector():
 
             self.rightTorso = [34, rightTorsoX, rightTorsoY]
             self.leftTorso = [33, leftTorsoX, leftTorsoY]
-            print(self.rightTorso, self.leftTorso)
+            #print(self.rightTorso, self.leftTorso)
 
             if draw:
                 cv2.circle(img, (leftTorsoX, leftTorsoY), 5, (255, 0, 0), cv2.FILLED)
@@ -108,31 +109,82 @@ class PoseDetector():
 
         armAngle = self.findAngle(img,p1, p2, p3)
         wrist = self.lmList[15]
-
         #Start
         if self.state == States[0]:
-            self.barPathColor = (255, 0, 255)  # purple
-            self.barPath.append([wrist[1:],self.barPathColor ])
-            if armAngle < 160:
+            self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            if armAngle < 165:
                 self.state = States[1]
         #Eccentric
         elif self.state == States[1]:
-            self.barPath.append([wrist[1:],self.barPathColor ])
-            if armAngle < 40: #75
+            self.barPathColor = (255, 0, 255)  # purple
+            self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            if armAngle < 35: #75
                 self.state = States[2]
         #Bottom
         elif self.state == States[2]:
-            self.barPath.append([wrist[1:],self.barPathColor ])
-            if armAngle > 45: #85
+
+            self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            if armAngle > 40: #85
                 self.state = States[3]
         #Concentric
         elif self.state == States[3]:
             self.barPathColor = (0, 255, 0)  # green
-            self.barPath.append([wrist[1:],self.barPathColor ])
-            if armAngle > 165:
+            self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            if armAngle > 170:
                 self.repetitions += 1
                 self.state = States[0]
         return (self.state, self.repetitions, self.barPathColor)
+
+    def drawBarPath(self, img, path):
+        if len(path) < 2: return
+        for i in range(len(path) - 1):
+            p1 = path[i][0]
+            p2 = path[i + 1][0]
+            drawColor = path[i][1]
+            cv2.line(img, p1, p2, drawColor, 2, 2)
+
+    def calculateVelocity(self, img,path,draw=True):
+        if len(path) < 2:
+            return {}
+        self.phase_velocities = {}
+        current_state = path[0][2]
+        phase_start_time = path[0][3]
+        phase_distance = 0.0
+
+
+        for i in range(len(path) - 1):
+            p1 = np.array(path[i][0])
+            p2 = np.array(path[i + 1][0])
+            next_state = path[i+1][2]
+            current_time = path[i+1][3]
+
+            phase_distance += np.linalg.norm(p2 - p1)
+
+            if current_state != next_state :
+
+                passed_time = current_time - phase_start_time
+
+                if passed_time > 0:
+                    velocity = phase_distance / passed_time
+                else:
+                    velocity = 0.0
+
+                self.phase_velocities[current_state] = velocity
+
+                current_state = next_state
+                phase_start_time = current_time
+                phase_distance = 0.0
+
+
+        if draw:
+            color = path[-1][1]
+            y_offset = 50
+            cv2.putText(img, f'Velocity [px/s]', (20, 190), cv2.FONT_HERSHEY_PLAIN, 3, (0,0,255), 3)
+            for phase, velocity in self.phase_velocities.items():
+                cv2.putText(img, f'{phase}: {velocity:.2f}', (20, 190 + y_offset), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
+                y_offset += 50
+
+        return self.phase_velocities
 
 
 

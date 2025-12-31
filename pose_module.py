@@ -20,6 +20,7 @@ class PoseDetector():
         self.state = States[0]
         self.repetitions= 0
         self.barPath = []
+        self.barPathColor = (255, 0 ,255 ) #purple
         self.mpDraw = mp.solutions.drawing_utils
         self.mpPose = mp.solutions.pose
         self.pose = self.mpPose.Pose(static_image_mode = self.mode,
@@ -44,7 +45,7 @@ class PoseDetector():
                 self.lmList.append([id, cx, cy])
                 if draw:
                     cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
-            self.findTorsoPoints(img)
+            self.findTorsoPoints(img, draw=draw)
             self.lmList.append(self.leftTorso)
             self.lmList.append(self.rightTorso)
         return self.lmList
@@ -110,25 +111,28 @@ class PoseDetector():
 
         #Start
         if self.state == States[0]:
+            self.barPathColor = (255, 0, 255)  # purple
+            self.barPath.append([wrist[1:],self.barPathColor ])
             if armAngle < 160:
                 self.state = States[1]
         #Eccentric
         elif self.state == States[1]:
-            self.barPath.append(wrist[1:])
-            if armAngle < 75:
+            self.barPath.append([wrist[1:],self.barPathColor ])
+            if armAngle < 40: #75
                 self.state = States[2]
         #Bottom
         elif self.state == States[2]:
-            self.barPath.append(wrist[1:])
-            if armAngle > 85:
+            self.barPath.append([wrist[1:],self.barPathColor ])
+            if armAngle > 45: #85
                 self.state = States[3]
         #Concentric
         elif self.state == States[3]:
-            self.barPath.append(wrist[1:])
+            self.barPathColor = (0, 255, 0)  # green
+            self.barPath.append([wrist[1:],self.barPathColor ])
             if armAngle > 165:
                 self.repetitions += 1
                 self.state = States[0]
-        return self.state, self.repetitions
+        return (self.state, self.repetitions, self.barPathColor)
 
 
 

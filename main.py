@@ -27,7 +27,9 @@ def main():
                 cv2.putText(img, f'Phase: {state}', (20, 90), cv2.FONT_HERSHEY_PLAIN, 3, drawColor, 3)
                 cv2.putText(img, f'Reps: {reps}', (20, 140), cv2.FONT_HERSHEY_PLAIN, 3, (0,0,255),  3)
             detector.drawBarPath(img, detector.barPath)
-            velocity = detector.calculateVelocity(img, detector.barPath)
+            detector.calculateVelocity(img, detector.barPath)
+            detector.detectAsymmetry(img, True)
+            detector.displayMessages(img)
             #print(velocity)
 
             #leftElbowangle = detector.findAngle(img, 13, 11, 33)

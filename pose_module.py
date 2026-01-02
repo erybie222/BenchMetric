@@ -18,15 +18,18 @@ class PoseDetector():
         self.smooth = smooth
         self.detectionCon = detectionCon
         self.trackCon = trackCon
-        self.state = States[0]
-        self.repetitions= 0
-        self.barPath = []
-        self.barPathColor = (255, 0 ,255 ) #purple
         self.mpDraw = mp.solutions.drawing_utils
         self.mpPose = mp.solutions.pose
         self.pose = self.mpPose.Pose(static_image_mode = self.mode,
                                      smooth_landmarks=self.smooth, min_detection_confidence=self.detectionCon,
                                      min_tracking_confidence=self.trackCon)
+        self.state = States[0]
+        self.repetitions = 0
+        self.bottomStartTime = 0
+        self.barPath = []
+        self.barPathColor = (255, 0, 255)  # purple
+        self.lastBottomTime = 0
+        self.messageTimer = 0
 
     def findPose(self, img, draw=True):
 
@@ -108,7 +111,7 @@ class PoseDetector():
             return
 
         armAngle = self.findAngle(img,p1, p2, p3)
-        wrist = self.lmList[15]
+        wrist = self.lmList[p3]
         #Start
         if self.state == States[0]:
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
@@ -119,12 +122,15 @@ class PoseDetector():
             self.barPathColor = (255, 0, 255)  # purple
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
             if armAngle < 35: #75
+                self.bottomStartTime = time.time()
                 self.state = States[2]
         #Bottom
         elif self.state == States[2]:
-
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
             if armAngle > 40: #85
+                bottomTime = time.time() - self.bottomStartTime
+                self.lastBottomTime = bottomTime
+                self.messageTimer = time.time()
                 self.state = States[3]
         #Concentric
         elif self.state == States[3]:
@@ -181,10 +187,38 @@ class PoseDetector():
             y_offset = 50
             cv2.putText(img, f'Velocity [px/s]', (20, 190), cv2.FONT_HERSHEY_PLAIN, 3, (0,0,255), 3)
             for phase, velocity in self.phase_velocities.items():
-                cv2.putText(img, f'{phase}: {velocity:.2f}', (20, 190 + y_offset), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
+                cv2.putText(img, f'{phase}: {velocity:.2f}', (20, 190 + y_offset), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0 ,0 ), 2)
                 y_offset += 50
 
         return self.phase_velocities
+
+    def detectAsymmetry(self, img, draw=True):
+        leftWrist, rightWrist = self.lmList[15:17]
+        asymmetry = False
+        if abs(leftWrist[2] - rightWrist[2]) > 100:
+            asymmetry = True
+            if draw:
+                cv2.circle(img, leftWrist[1:], 10,(0,255, 255),3)
+                cv2.circle(img, rightWrist[1:], 10,(0,255, 255),3)
+                cv2.line(img, leftWrist[1:], rightWrist[1:],(0,255, 255), 3)
+                cv2.putText(img,'WRIST ASYMETRY DETECTED', (300,700),cv2.FONT_HERSHEY_PLAIN,3, (0,0,255), 3)
+        return asymmetry
+
+    # def detectPause(self, img, bottomTime,messageTime, draw=True):
+    #     startTime = time.time()
+    #     pause = False
+    #     print(bottomTime)
+    #     if bottomTime > 0.1 and time.time() - startTime < messageTime:
+    #         if draw and time.time() - startTime < messageTime:
+    #             cv2.putText(img,f'BOTTOM PAUSE DETECTED: {bottomTime:.2f}s', (300,600),cv2.FONT_HERSHEY_PLAIN,3, (0,0,255), 3)
+    #
+    def displayMessages(self, img):
+        if self.lastBottomTime > 1 and time.time() - self.messageTimer < 1.5:
+            cv2.putText(img,f'BOTTOM PAUSE DETECTED: {self.lastBottomTime:.2f}s', (250,650),cv2.FONT_HERSHEY_PLAIN,3, (255, 0 ,0), 3)
+
+
+
+
 
 
 

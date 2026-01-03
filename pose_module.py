@@ -3,6 +3,7 @@ import cv2
 import math
 import numpy as np
 import time
+import csv
 States = {
     0: "START",
     1: "ECCENTRIC",
@@ -27,9 +28,15 @@ class PoseDetector():
         self.repetitions = 0
         self.bottomStartTime = 0
         self.barPath = []
+        self.currentPhasePath = []
         self.barPathColor = (255, 0, 255)  # purple
         self.lastBottomTime = 0
         self.messageTimer = 0
+        self.rightTorso, self.leftTorso = [], []
+        self.metrics = []
+        self.bottomPause = False
+        self.wasAsymmetric = False
+
 
     def findPose(self, img, draw=True):
 
@@ -115,29 +122,51 @@ class PoseDetector():
         #Start
         if self.state == States[0]:
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            self.currentPhasePath.append([wrist[1:], time.time()])
             if armAngle < 165:
+                self.saveData()
+                self.currentPhasePath= []
+
+                self.wasAsymmetric = False
                 self.state = States[1]
         #Eccentric
         elif self.state == States[1]:
             self.barPathColor = (255, 0, 255)  # purple
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            self.currentPhasePath.append([wrist[1:], time.time()])
             if armAngle < 35: #75
                 self.bottomStartTime = time.time()
+                self.saveData()
+                self.currentPhasePath= []
+                self.wasAsymmetric = False
                 self.state = States[2]
         #Bottom
         elif self.state == States[2]:
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            self.currentPhasePath.append([wrist[1:], time.time()])
             if armAngle > 40: #85
                 bottomTime = time.time() - self.bottomStartTime
                 self.lastBottomTime = bottomTime
                 self.messageTimer = time.time()
+                if bottomTime > 1.0:
+                    self.bottomPause = True
+                else:
+                    self.bottomPause = False
+                self.saveData()
+                self.currentPhasePath= []
+                self.wasAsymmetric = False
+                self.bottomPause = False
                 self.state = States[3]
         #Concentric
         elif self.state == States[3]:
             self.barPathColor = (0, 255, 0)  # green
             self.barPath.append([wrist[1:],self.barPathColor, self.state, time.time()])
+            self.currentPhasePath.append([wrist[1:], time.time()])
             if armAngle > 170:
+                self.saveData()
+                self.currentPhasePath= []
                 self.repetitions += 1
+                self.wasAsymmetric = False
                 self.state = States[0]
         return (self.state, self.repetitions, self.barPathColor)
 
@@ -194,15 +223,14 @@ class PoseDetector():
 
     def detectAsymmetry(self, img, draw=True):
         leftWrist, rightWrist = self.lmList[15:17]
-        asymmetry = False
         if abs(leftWrist[2] - rightWrist[2]) > 100:
-            asymmetry = True
+            self.wasAsymmetric = True
             if draw:
                 cv2.circle(img, leftWrist[1:], 10,(0,255, 255),3)
                 cv2.circle(img, rightWrist[1:], 10,(0,255, 255),3)
                 cv2.line(img, leftWrist[1:], rightWrist[1:],(0,255, 255), 3)
                 cv2.putText(img,'WRIST ASYMETRY DETECTED', (300,700),cv2.FONT_HERSHEY_PLAIN,3, (0,0,255), 3)
-        return asymmetry
+        return self.wasAsymmetric
 
     # def detectPause(self, img, bottomTime,messageTime, draw=True):
     #     startTime = time.time()
@@ -216,7 +244,38 @@ class PoseDetector():
         if self.lastBottomTime > 1 and time.time() - self.messageTimer < 1.5:
             cv2.putText(img,f'BOTTOM PAUSE DETECTED: {self.lastBottomTime:.2f}s', (250,650),cv2.FONT_HERSHEY_PLAIN,3, (255, 0 ,0), 3)
 
-    # def saveToCsv(self):
+    def saveData(self):
+        if len(self.currentPhasePath) < 2:
+            return
+
+        start_time = self.currentPhasePath[0][1]
+        end_time = self.currentPhasePath[-1][1]
+        duration = end_time - start_time
+
+        distance = 0.0
+        for i in range(len(self.currentPhasePath) - 1):
+            p1 = np.array(self.currentPhasePath[i][0])
+            p2 = np.array(self.currentPhasePath[i + 1][0])
+            distance += np.linalg.norm(p1 - p2)
+
+        avg_velocity = distance / duration if duration > 0 else 0.0
+
+        self.metrics.append({
+            "Repetition": int(self.repetitions),
+            "Phase": self.state,
+            "Duration_s": round(duration, 2),
+            "Velocity_avg": round(avg_velocity, 2),
+            "Distance_px": int(distance),
+            "Bottom_pause": 1 if self.bottomPause else 0,
+            "Asymmetry": 1 if self.wasAsymmetric else 0
+        })
+    def saveToCsv(self, output_file = 'results.csv'):
+        fieldnames = ["Repetition", "Phase", "Duration_s", "Velocity_avg", "Distance_px", "Bottom_pause", "Asymmetry"]
+        with open(output_file, mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.metrics)
+
 
 
 

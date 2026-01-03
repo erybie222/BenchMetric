@@ -216,6 +216,7 @@ class PoseDetector():
         if self.lastBottomTime > 1 and time.time() - self.messageTimer < 1.5:
             cv2.putText(img,f'BOTTOM PAUSE DETECTED: {self.lastBottomTime:.2f}s', (250,650),cv2.FONT_HERSHEY_PLAIN,3, (255, 0 ,0), 3)
 
+    # def saveToCsv(self):
 
 
 

@@ -8,9 +8,12 @@ videosPath = "assets/videos/test_1.mp4"
 ###############################
 
 
-def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, side = 'left'):
+def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, side = 'left', progress_bar=None):
     # camera / video
     cap = cv2.VideoCapture(str(videoPath))
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    current_frame = 0
 
     detector = pd.PoseDetector(detectionCon=0.8, trackCon=0.8)
     pTime = 0
@@ -24,6 +27,12 @@ def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, s
 
         if not success:
             break
+
+        current_frame += 1
+
+        if progress_bar is not None and total_frames > 0:
+            progress = min(int((current_frame / total_frames) * 100), 99)
+            progress_bar.progress(progress, text=f"Analyzing frame {current_frame}/{total_frames}...")
 
         img = cv2.resize(img, (imgWidth, imgHeight))
         img = detector.findPose(img, draw=False)
@@ -66,7 +75,8 @@ def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, s
     cap.release()
     if not streamlit_mode:
         cv2.destroyAllWindows()
-    detector.saveToCsv()
+    metrics = detector.saveToCsv()
+    return metrics
 
 def main():
 

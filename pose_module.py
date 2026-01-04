@@ -4,6 +4,7 @@ import math
 import numpy as np
 import time
 import csv
+import pandas as pd
 States = {
     0: "START",
     1: "ECCENTRIC",
@@ -232,14 +233,6 @@ class PoseDetector():
                 cv2.putText(img,'WRIST ASYMETRY DETECTED', (300,700),cv2.FONT_HERSHEY_PLAIN,3, (0,0,255), 3)
         return self.wasAsymmetric
 
-    # def detectPause(self, img, bottomTime,messageTime, draw=True):
-    #     startTime = time.time()
-    #     pause = False
-    #     print(bottomTime)
-    #     if bottomTime > 0.1 and time.time() - startTime < messageTime:
-    #         if draw and time.time() - startTime < messageTime:
-    #             cv2.putText(img,f'BOTTOM PAUSE DETECTED: {bottomTime:.2f}s', (300,600),cv2.FONT_HERSHEY_PLAIN,3, (0,0,255), 3)
-    #
     def displayMessages(self, img):
         if self.lastBottomTime > 1 and time.time() - self.messageTimer < 1.5:
             cv2.putText(img,f'BOTTOM PAUSE DETECTED: {self.lastBottomTime:.2f}s', (250,650),cv2.FONT_HERSHEY_PLAIN,3, (255, 0 ,0), 3)
@@ -269,12 +262,19 @@ class PoseDetector():
             "Bottom_pause": 1 if self.bottomPause else 0,
             "Asymmetry": 1 if self.wasAsymmetric else 0
         })
+
     def saveToCsv(self, output_file = 'results.csv'):
-        fieldnames = ["Repetition", "Phase", "Duration_s", "Velocity_avg", "Distance_px", "Bottom_pause", "Asymmetry"]
-        with open(output_file, mode='w', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(self.metrics)
+        if not self.metrics:
+            print("Lack of data to save!")
+            return
+        df = pd.DataFrame(self.metrics)
+        try:
+            df.to_csv(output_file,index=False)
+            print(f'Metrics saved in {output_file}.')
+        except Exception as e:
+            print(f'Saving error {e}')
+
+        return df
 
 
 

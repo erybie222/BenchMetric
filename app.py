@@ -50,7 +50,7 @@ def app():
                     plotVelocity(metrics)
                     plotDuration(metrics)
                     plotPhaseDuration(metrics)
-                    plotRepDistacne(metrics)
+                    plotRepDistance(metrics)
 
 
 

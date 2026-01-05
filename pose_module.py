@@ -104,7 +104,6 @@ class PoseDetector():
 
             self.rightTorso = [34, rightTorsoX, rightTorsoY]
             self.leftTorso = [33, leftTorsoX, leftTorsoY]
-            #print(self.rightTorso, self.leftTorso)
 
             if draw:
                 cv2.circle(img, (leftTorsoX, leftTorsoY), 5, (255, 0, 0), cv2.FILLED)

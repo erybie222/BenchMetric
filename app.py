@@ -50,6 +50,7 @@ def app():
                     plotVelocity(metrics)
                     plotDuration(metrics)
                     plotPhaseDuration(metrics)
+                    plotRepDistacne(metrics)
 
 
 
@@ -87,7 +88,7 @@ def plotDuration(metrics):
 
 
 def plotPhaseDuration(metrics):
-    st.subheader("Phase duration plot")
+    st.subheader("Phase duration chart")
 
     df_pivot = metrics.pivot_table(index="Repetition", columns="Phase", values="Duration_s")
 
@@ -108,6 +109,12 @@ def plotPhaseDuration(metrics):
         color=colors,
         stack=False
     )
+
+def plotRepDistance(metrics):
+    st.subheader("Rep distance chart")
+    df_indexed = metrics.set_index("Repetition")["Distance_px"]
+    df_distance_rep = df_indexed.groupby("Repetition").sum()
+    st.bar_chart(df_distance_rep, x_label="Repetition", y_label="Barbell distance [px]",)
 
 if __name__ == '__main__':
     app()

@@ -39,8 +39,7 @@ def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, s
         lmList = detector.findPosition(img, draw=False)
 
         if len(lmList) != 0:
-            # rightArmAngle = detector.findAngle(img, 12 ,14, 16)
-            # leftArmAngle = detector.findAngle(img, 11 ,13, 15)
+
             state, reps, drawColor = detector.checkState(img, side)
             if state:
                 cv2.putText(img, f'Phase: {state}', (20, 90), cv2.FONT_HERSHEY_PLAIN, 3, drawColor, 3)
@@ -49,10 +48,6 @@ def analyze(videoPath, imgWidth, imgHeight, streamlit_mode=False, delay = 0.0, s
             detector.calculateVelocity(img, detector.barPath)
             detector.detectAsymmetry(img, True)
             detector.displayMessages(img)
-            #print(detector.metrics)
-            # print(velocity)
-
-            # leftElbowangle = detector.findAngle(img, 13, 11, 33)
 
 
         cTime = time.time()
